@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum AgentStatus {
+  ACTIVE
+  LOCKED
+  PENDING
+}
+
+enum VerificationStatus {
+  VERIFIED
+  UNVERIFIED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reviews   Review[]
+  reports   Report[]
+}
+
+model Agent {
+  id                String             @id @default(cuid())
+  name              String
+  phone             String?
+  accountNumber     String?
+  bankName          String?
+  facebookLink      String?
+  avatarUrl         String?
+  depositAmount     Int                @default(0) // số tiền cọc (VND)
+  trustScore        Float              @default(0) // 0-5
+  trustSource       String?            // "user_reviews" | "admin_set"
+  verification      VerificationStatus @default(UNVERIFIED)
+  status            AgentStatus        @default(ACTIVE)
+  joinDate          DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  isFeatured        Boolean            @default(false)
+  isHighlighted     Boolean            @default(false)
+
+  transactions      Transaction[]
+  reviews           Review[]
+  reports           Report[]
+
+  @@index([phone])
+  @@index([accountNumber])
+  @@index([name])
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  amount      Int
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  rating    Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  reason      String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model SearchLog {
+  id        String   @id @default(cuid())
+  query     String
+  type      String   // phone | account | facebook | name
+  createdAt DateTime @default(now())
+}
